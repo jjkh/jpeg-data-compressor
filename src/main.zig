@@ -1,8 +1,9 @@
 const std = @import("std");
 const c = @cImport({
-    @cDefine("STB_IMAGE_IMPLEMENTATION", "");
+    @cDefine("STB_IMAGE_IMPLEMENTATION", {});
+    @cDefine("STBI_ONLY_JPEG", {});
     @cInclude("stb_image.h");
-    @cDefine("STB_IMAGE_WRITE_IMPLEMENTATION", "");
+    @cDefine("STB_IMAGE_WRITE_IMPLEMENTATION", {});
     @cInclude("stb_image_write.h");
 });
 
@@ -15,7 +16,6 @@ pub fn main() !u8 {
         try displayHelp(if (err == error.NoArguments) null else err);
         return 1;
     };
-    std.log.debug("op: {}, infile: {s}, outfile: {s}", .{ args.operation, args.infile(), args.outfile() });
     if (args.operation == .compress) {
         try compressFile(allocator, args);
     } else {
@@ -62,16 +62,42 @@ fn compressFile(allocator: std.mem.Allocator, args: Args) !void {
         @intCast(img_size),
         1,
         data.ptr,
-        90,
+        100,
     );
     if (result == 0) return error.WriteFailed;
 }
 
 fn extractFile(allocator: std.mem.Allocator, args: Args) !void {
-    _ = args;
-    _ = allocator;
-    // const infile = try std.fs.cwd().openFile(args.infile, .{});
-    // defer infile.close();
+    std.log.info("opening file {s}", .{args.infile()});
+    const infile = try std.fs.cwd().openFile(args.infile(), .{});
+    defer infile.close();
+
+    const buffer = try infile.readToEndAlloc(allocator, std.math.maxInt(usize));
+    var x: c_int = undefined;
+    var y: c_int = undefined;
+    var n: c_int = undefined;
+    const data: ?[*]u8 = c.stbi_load_from_memory(
+        buffer.ptr,
+        @intCast(buffer.len),
+        &x,
+        &y,
+        &n,
+        1,
+    );
+    defer c.stbi_image_free(data);
+
+    if (data == null) {
+        std.log.err("{s}", .{c.stbi_failure_reason()});
+        return error.ReadJpegFailed;
+    }
+
+    const jpeg_data = data.?[0..@intCast(x * y)];
+
+    std.log.info("creating file {s}", .{args.outfile()});
+    var outfile = try std.fs.cwd().createFile(args.outfile(), .{});
+    defer outfile.close();
+
+    _ = try outfile.writeAll(jpeg_data);
 }
 
 const Args = struct {
