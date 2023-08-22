@@ -1,7 +1,5 @@
 const std = @import("std");
 const c = @cImport({
-    @cDefine("STB_IMAGE_IMPLEMENTATION", {});
-    @cDefine("STBI_ONLY_JPEG", {});
     @cInclude("stb_image.h");
     @cDefine("STB_IMAGE_WRITE_IMPLEMENTATION", {});
     @cInclude("stb_image_write.h");

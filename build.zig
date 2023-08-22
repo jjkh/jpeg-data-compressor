@@ -26,6 +26,7 @@ pub fn build(b: *std.Build) void {
 
     exe.linkLibC();
     exe.addIncludePath(.{ .path = "deps" });
+    exe.addCSourceFile(.{ .file = .{ .path = "deps/stb_image.c" }, .flags = &[_][]const u8{} });
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
